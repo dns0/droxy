@@ -12,9 +12,12 @@ use tokio_io::codec::{Encoder, Decoder};
 use tokio_proto::TcpServer;
 
 mod proto;
+mod ruling;
 mod service;
 
 pub fn run() {
+    let ruler = ruling::Ruler::new();
+    let d = ruler.rule_domain("");
     // Specify the localhost address
     let addr = "0.0.0.0:31792".parse().unwrap();
 
