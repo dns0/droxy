@@ -2,6 +2,8 @@ use tokio_service::Service;
 use futures::{future, Future};
 
 use std::io;
+use std::net::Ipv4Addr;
+use std::str::FromStr;
 
 use super::ruling;
 
@@ -24,12 +26,8 @@ impl Service for Echo {
     // Produce a future for computing a response from a request.
     fn call(&self, req: Self::Request) -> Self::Future {
         // In this case, the response is immediate.
-        let d = self.ruler.rule_domain(&req);
-        if let Some(s) = d {
-            Box::new(future::ok(s.to_string()))
-        } else {
-            Box::new(future::ok("unknown".to_string()))
-        }
+        let r = self.process(&req);
+        Box::new(future::ok(r))
     }
 }
 
@@ -38,6 +36,36 @@ impl Echo {
         let ruler = ruling::Ruler::new(config);
         Echo {
             ruler: ruler
+        }
+    }
+
+    fn process(&self, req: &str) -> String {
+        let ws: Vec<&str> = req.splitn(2, ' ').collect();
+        if ws.len() < 2 {
+            return "error too few args".to_string()
+        }
+        let t = ws[0];
+        let a = ws[1];
+        if t == "d" {
+            let d = self.ruler.rule_domain(a);
+            if let Some(s) = d {
+                s.to_string()
+            } else {
+                "none".to_string()
+            }
+        } else if t == "i4" {
+            let ip = Ipv4Addr::from_str(a);
+            if let Ok(ip) = ip {
+                if let Some(r) = self.ruler.rule_ip4(ip) {
+                    r.to_string()
+                } else {
+                    "none".to_string()
+                }
+            } else {
+                "error parsing ip".to_string()
+            }
+        } else {
+            "error unknown type".to_string()
         }
     }
 }
