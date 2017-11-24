@@ -54,12 +54,26 @@ impl <'a> Ruler{
                 let mut bufreader = io::BufReader::new(f);
                 let mut contents = String::new();
                 bufreader.read_to_string(&mut contents).unwrap();
+                let mut ns: Vec<&str> = vec![];
                 for line in contents.lines() {
                     if line.len() == 0 || line.starts_with('#') { continue }
                     let domain = line.split_whitespace().next();
                     if let Some(domain) = domain {
-                        let mut d = domain.to_string();
-                        if !d.ends_with('.') { d.push('.'); }
+                        let mut ds: Vec<&str> = domain.split('.').collect();
+                        for i in 0..ds.len() {
+                            if ds[i].len() == 0 {
+                                ds[i] = ns[i];
+                            } else {
+                                if i < ns.len() {
+                                    ns[i] = ds[i];
+                                } else {
+                                    assert_eq!(i,ns.len());
+                                    ns.push(ds[i]);
+                                }
+                            }
+                        }
+                        let mut d = ds.join(".");
+                        d.push('.');
                         trie.insert(d, region.clone());
                     }
                 }
