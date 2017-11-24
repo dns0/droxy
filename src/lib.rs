@@ -11,6 +11,7 @@ use std::net::IpAddr;
 use std::net::Ipv4Addr;
 use std::net::SocketAddr;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use tokio_io::codec::{Encoder, Decoder};
 
@@ -33,8 +34,10 @@ pub fn run(port: &str) {
 
     // We provide a way to *instantiate* the service for each new
     // connection; here, we just immediately return a new instance.
+    let ruler = ruling::Ruler::new(config_path);
+    let r = Arc::new(ruler);
     server.serve(move || {
-        let s = service::Echo::new(config_path);
+        let s = service::Echo::new(r.clone());
         Ok(s)
     });
 }

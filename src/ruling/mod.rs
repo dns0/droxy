@@ -11,12 +11,12 @@ use std::fs::DirEntry;
 use std::io;
 use std::io::Read;
 use std::net::Ipv4Addr;
-use std::rc::Rc;
+use std::sync::Arc;
 use std::str::FromStr;
 
 pub struct Ruler{
-    domain_trie: Trie<String, Rc<String>>,
-    ip4_table: IpLookupTable<Ipv4Addr, Rc<String>>
+    domain_trie: Trie<String, Arc<String>>,
+    ip4_table: IpLookupTable<Ipv4Addr, Arc<String>>
 }
 
 impl <'a> Ruler{
@@ -30,21 +30,21 @@ impl <'a> Ruler{
         ruler
     }
 
-    pub fn rule_ip4(&self, ip: Ipv4Addr) -> Option<&Rc<String>> {
+    pub fn rule_ip4(&self, ip: Ipv4Addr) -> Option<&Arc<String>> {
         match self.ip4_table.longest_match(ip) {
             Some((_, _, v)) => Some(v),
             None => None,
         }
     }
 
-    pub fn rule_domain(&self, domain: &str) -> Option<&Rc<String>> {
+    pub fn rule_domain(&self, domain: &str) -> Option<&Arc<String>> {
         let mut d = domain.to_string();
         if !d.ends_with('.') { d.push('.'); }
         self.domain_trie.get_ancestor_value(&d)
     }
 
-    fn build_domain_trie(regions: &HashMap<Rc<String>, RegionConfFiles>)
-        -> Trie<String, Rc<String>> {
+    fn build_domain_trie(regions: &HashMap<Arc<String>, RegionConfFiles>)
+        -> Trie<String, Arc<String>> {
         let mut trie= Trie::new();
         for (region, conf) in regions {
             for entry in &conf.domain {
@@ -80,7 +80,7 @@ impl <'a> Ruler{
         trie
     }
 
-    pub fn find_confs(config: &str)-> HashMap<Rc<String>, RegionConfFiles> {
+    pub fn find_confs(config: &str)-> HashMap<Arc<String>, RegionConfFiles> {
         let mut region_map = HashMap::new();
         for entry in fs::read_dir(config).unwrap() {
             match entry {
@@ -93,7 +93,7 @@ impl <'a> Ruler{
                                 && name.len() > 7 {
                                 let region_name = name.trim_left_matches("region.").to_owned();
                                 let conf = RegionConfFiles::new(file).unwrap();
-                                region_map.insert(Rc::new(region_name), conf);
+                                region_map.insert(Arc::new(region_name), conf);
                             }
                         }
                         Err(e) => panic!("error reading dir entry type {:?}", e)
@@ -107,8 +107,8 @@ impl <'a> Ruler{
 
 }
 
-fn build_ip4_table(regions: &HashMap<Rc<String>, RegionConfFiles>)
-        -> IpLookupTable<Ipv4Addr, Rc<String>> {
+fn build_ip4_table(regions: &HashMap<Arc<String>, RegionConfFiles>)
+        -> IpLookupTable<Ipv4Addr, Arc<String>> {
         let mut i4table= IpLookupTable::new();
         for (region, conf) in regions {
             for entry in &conf.ip4 {

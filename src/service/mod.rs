@@ -4,12 +4,13 @@ use futures::{future, Future};
 use std::io;
 use std::net::Ipv4Addr;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use super::ruling;
 
 
 pub struct Echo {
-    ruler: ruling::Ruler
+    ruler: Arc<ruling::Ruler>
 }
 
 impl Service for Echo {
@@ -32,8 +33,7 @@ impl Service for Echo {
 }
 
 impl Echo {
-    pub fn new(config: &str) -> Echo {
-        let ruler = ruling::Ruler::new(config);
+    pub fn new(ruler: Arc<ruling::Ruler>) -> Echo {
         Echo {
             ruler: ruler
         }
