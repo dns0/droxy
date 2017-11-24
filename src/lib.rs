@@ -1,5 +1,6 @@
 extern crate bytes;
 extern crate futures;
+extern crate futures_cpupool;
 extern crate tokio_io;
 extern crate tokio_proto;
 extern crate tokio_service;
@@ -12,6 +13,9 @@ use std::net::Ipv4Addr;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
+
+use futures::Future;
+use futures_cpupool::CpuPool;
 
 use tokio_io::codec::{Encoder, Decoder};
 
@@ -28,6 +32,7 @@ pub fn run(port: &str) {
     let port = u16::from_str(port).unwrap();
     let socket = SocketAddr::new(IpAddr::V4(addr), port);
 
+    let pool = CpuPool::new(20);
     // The builder requires a protocol and an address
     let server = TcpServer::new(proto::LineProto,
                                 socket);
@@ -36,10 +41,16 @@ pub fn run(port: &str) {
     // connection; here, we just immediately return a new instance.
     let ruler = ruling::Ruler::new(config_path);
     let r = Arc::new(ruler);
-    server.serve(move || {
-        let s = service::Echo::new(r.clone());
-        Ok(s)
+
+    let future = pool.spawn_fn(move|| {
+        server.serve(move || {
+            let s = service::Echo::new(r.clone());
+            Ok(s)
+        });
+        let res: Result<(), ()> = Ok(());
+        res
     });
+    future.wait();
 }
 
 pub struct LineCodec;
