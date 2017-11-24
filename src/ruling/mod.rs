@@ -31,7 +31,6 @@ impl <'a> Ruler{
     }
 
     pub fn rule_ip4(&self, ip: Ipv4Addr) -> Option<&Rc<String>> {
-        println!("{:?}", ip);
         match self.ip4_table.longest_match(ip) {
             Some((_, _, v)) => Some(v),
             None => None,
@@ -39,7 +38,6 @@ impl <'a> Ruler{
     }
 
     pub fn rule_domain(&self, domain: &str) -> Option<&Rc<String>> {
-        println!("{:?}", domain);
         let mut d = domain.to_string();
         if !d.ends_with('.') { d.push('.'); }
         self.domain_trie.get_ancestor_value(&d)
