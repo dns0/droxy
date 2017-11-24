@@ -19,7 +19,8 @@ impl Service for Echo {
     // Produce a future for computing a response from a request.
     fn call(&self, req: Self::Request) -> Self::Future {
         // In this case, the response is immediate.
-        Box::new(future::ok(req))
+        let rev = req.chars().rev().collect();
+        Box::new(future::ok(rev))
     }
 }
 
