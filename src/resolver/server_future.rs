@@ -48,9 +48,11 @@ impl ServerFuture {
         // this spawns a ForEach future which handles all the requests into a Handler.
         let f = request_stream
             .for_each(move |(request, response_handle)| {
-                let response = handler.handle_request(&request);
-                let mut rh = response_handle;
-                 rh.send(response).unwrap();//.map_err(|x| x.into())
+                let response = handler.handle_request(&request, false);
+                if let Ok(response) = response {
+                    let mut rh = response_handle;
+                    let _ = rh.send(response);
+                }
                 future::ok(())
             })
             .map_err(|e| debug!("error in UDP request_stream handler: {}", e));
@@ -97,9 +99,16 @@ impl ServerFuture {
                 &h2.clone()
                     .spawn(request_stream
                         .for_each(move |(request, response_handle)| {
-                            let response = handler.handle_request(&request);
-                            let mut rh = response_handle;
-                            rh.send(response).unwrap();//.map_err(|x| x.into())
+                            let response = handler.handle_request(&request, true);
+                            match  response {
+                                Ok(r) => {
+                                    let mut rh = response_handle;
+                                    let _ = rh.send(r);
+                                },
+                                Err(_e) => {
+                                    println!("unsuccessful handling {:?}", request.message);
+                                }
+                            }
                             future::ok(())
                         })
                         .map_err(move |e| {
