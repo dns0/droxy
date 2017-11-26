@@ -99,19 +99,17 @@ impl ServerFuture {
                 let handler = handler.clone();
 
                 // and spawn to the io_loop
+                let h3 = h2.clone();
                 &h2.clone()
                     .spawn(request_stream
                         .for_each(move |(request, response_handle)| {
-                            let response = handler.handle_request(&request, true);
-                            match  response {
-                                Ok(r) => {
-                                    let mut rh = response_handle;
-                                    let _ = rh.send(r);
-                                },
-                                Err(_e) => {
-                                    println!("unsuccessful handling {:?}", request.message);
-                                }
-                            }
+                            let response = handler.handle_future(&request, true);
+                            let f = response.and_then(move |r| {
+                                let mut rh =  response_handle;
+                                let _ = rh.send(r);
+                                future::ok(())
+                            }).then(|_| Ok(()));
+                            h3.spawn(f);
                             future::ok(())
                         })
                         .map_err(move |e| {
