@@ -1,5 +1,4 @@
 use std::net::SocketAddr;
-use std::cell::RefCell;
 
 use futures::future;
 use futures::Future;
@@ -8,39 +7,24 @@ use tokio_core::reactor::Handle;
 use trust_dns::error::*;
 use trust_dns::op::message::Message;
 use trust_dns::op::Query;
-use trust_dns::udp::UdpClientStream;
-use trust_dns::tcp::TcpClientStream;
-use trust_dns::client::ClientFuture;
-use trust_dns::client::BasicClientHandle;
-use trust_dns::client::ClientHandle;
 use trust_dns_server::server::Request;
 
 use tokio_timer::Timer;
 use std::time::Duration;
 
+use super::dnsclient::DnsClient;
+
 pub struct SmartResolver {
-    fut_client: RefCell<BasicClientHandle>,
-    server: SocketAddr,
-    handle: Handle,
+    dnsclient: DnsClient,
 }
 
 impl SmartResolver {
     pub fn new(sa: SocketAddr, handle: Handle)-> Result<SmartResolver, ClientError> {
 
-        let (streamfut, streamhand) = UdpClientStream::new(sa, &handle.clone());
-        let futclient = ClientFuture::new(streamfut, streamhand, &handle.clone(), None);
-
+        let c = DnsClient::new(sa, handle)?;
         Ok(SmartResolver {
-            fut_client: RefCell::new(futclient),
-            server: sa,
-            handle: handle,
+            dnsclient: c,
         })
-    }
-
-    fn get_tcp_client(&self)-> BasicClientHandle {
-        let (streamfut, streamhand) = TcpClientStream::new(self.server, &self.handle.clone());
-        let futtcp = ClientFuture::new(streamfut, streamhand, &self.handle.clone(), None);
-        futtcp
     }
 
     pub fn handle_future(&self, req: &Request, use_tcp:bool) -> Box<Future<Item=Message, Error=ClientError>> {
@@ -56,12 +40,7 @@ impl SmartResolver {
         let timer = Timer::default();
         let timeout = timer.sleep(Duration::from_secs(5));
 
-        let res = if use_tcp {
-            let mut c = self.get_tcp_client();
-            c.query(name.clone(), q.query_class(), q.query_type())
-        } else {
-            self.fut_client.borrow_mut().query(name.clone(), q.query_class(), q.query_type())
-        };
+        let res = self.dnsclient.resolve(q, use_tcp);
         let m
         = res.and_then(move|result| {
             let mut msg = Message::new();

@@ -7,6 +7,7 @@ use std::time::Duration;
 use tokio_core::reactor::Handle;
 
 mod handler;
+mod dnsclient;
 mod server_future;
 
 pub fn start_resolver(h: Handle){
