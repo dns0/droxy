@@ -1,5 +1,8 @@
 use std::net::SocketAddr;
 
+use futures::Future;
+use futures::IntoFuture;
+
 use trust_dns::error::*;
 use trust_dns::op::message::Message;
 use trust_dns::op::Query;
@@ -24,6 +27,11 @@ impl SmartResolver {
             conn: client,
             tcp_client: tcpclient,
         })
+    }
+
+    pub fn handle_future(&self, req: &Request, use_tcp:bool) -> Box<Future<Item=Message, Error=ClientError>> {
+        let res = self.handle_request(req, use_tcp);
+        Box::new(res.into_future())
     }
 
     pub fn handle_request(&self, req: &Request, use_tcp: bool) -> Result<Message, ClientError> {

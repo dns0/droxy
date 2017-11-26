@@ -48,12 +48,12 @@ impl ServerFuture {
         // this spawns a ForEach future which handles all the requests into a Handler.
         let f = request_stream
             .for_each(move |(request, response_handle)| {
-                let response = handler.handle_request(&request, false);
-                if let Ok(response) = response {
+                let response = handler.handle_future(&request, false);
+                response.and_then(|res| {
                     let mut rh = response_handle;
-                    let _ = rh.send(response);
-                }
-                future::ok(())
+                    let _ = rh.send(res).map_err(|_| 5);
+                    future::ok(())
+                }).map_err(|_| io::Error::new(io::ErrorKind::Other, "query fail"))
             })
             .map_err(|e| debug!("error in UDP request_stream handler: {}", e));
         handle.spawn(f);
