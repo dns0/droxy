@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
 use std::cell::RefCell;
+use std::fmt;
 
 use futures::Future;
 use tokio_core::reactor::Handle;
@@ -16,6 +17,12 @@ pub struct DnsClient {
     fut_client: RefCell<BasicClientHandle>,
     server: SocketAddr,
     handle: Handle,
+}
+
+impl fmt::Display for DnsClient {
+    fn fmt(&self, fmt: &mut fmt::Formatter)-> fmt::Result {
+        write!(fmt, "{}", self.server)
+    }
 }
 
 impl DnsClient {
