@@ -46,17 +46,20 @@ impl ServerFuture {
         let handler = self.handler.clone();
 
         // this spawns a ForEach future which handles all the requests into a Handler.
+        let h2 = handle.clone();
         let f = request_stream
             .for_each(move |(request, response_handle)| {
                 let response = handler.handle_future(&request, false);
-                response.and_then(|res| {
+                let r = response.and_then(|res| {
                     let mut rh = response_handle;
                     let _ = rh.send(res).map_err(|_| 5);
                     future::ok(())
-                }).map_err(|_| io::Error::new(io::ErrorKind::Other, "query fail"))
+                }).then(|_| Ok(()));
+                h2.spawn(r);
+                Ok(())
             })
             .map_err(|e| debug!("error in UDP request_stream handler: {}", e));
-        handle.spawn(f);
+        handle.clone().spawn(f);
     }
 
     /// Register a TcpListener to the Server. This should already be bound to either an IPv6 or an

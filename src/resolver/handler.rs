@@ -18,6 +18,9 @@ use trust_dns::client::BasicClientHandle;
 use trust_dns::client::ClientHandle;
 use trust_dns_server::server::Request;
 
+use tokio_timer::Timer;
+use std::time::Duration;
+
 pub struct SmartResolver {
     conn: SyncClient,
     tcp_client: SyncClient,
@@ -51,6 +54,9 @@ impl SmartResolver {
         println!("querying {:?}", name);
         let id = req.message.id();
 
+        let timer = Timer::default();
+        let timeout = timer.sleep(Duration::from_secs(5));
+
         let res = self.fut_client.borrow_mut()
             .query(name.clone(), q.query_class(), q.query_type());
         let m
@@ -60,7 +66,7 @@ impl SmartResolver {
             for ans in result.answers() {
                 msg.add_answer(ans.clone());
             }
-            future::ok(msg)
+            timeout.then(|_| future::ok(msg))
         });
         Box::new(m)
     }
