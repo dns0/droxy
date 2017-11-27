@@ -11,9 +11,6 @@ use trust_dns::op::Query;
 use trust_dns::rr::domain::Name;
 use trust_dns_server::server::Request;
 
-use tokio_timer::Timer;
-use std::time::Duration;
-
 use super::dnsclient::DnsClient;
 use super::config::RegionalResolvers;
 use super::super::ruling::Ruler;
@@ -53,11 +50,7 @@ impl SmartResolver {
         }
         let q: &Query = &queries[0];
         let name = q.name();
-        println!("querying {:?}", name);
         let id = req.message.id();
-
-        let timer = Timer::default();
-        let timeout = timer.sleep(Duration::from_secs(5));
 
         let client = self.choose_resolver(name);
         println!("using {} for {}", client, name);
@@ -69,7 +62,7 @@ impl SmartResolver {
             for ans in result.answers() {
                 msg.add_answer(ans.clone());
             }
-            timeout.then(|_| future::ok(msg))
+            future::ok(msg)
         });
         Box::new(m)
     }
