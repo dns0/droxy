@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::sync::Arc;
 
+use futures::future;
 use futures::Future;
 
 use tokio_core::reactor::Handle;
@@ -49,11 +50,16 @@ impl SmartResolver {
         }
         let q: &Query = &queries[0];
         let name = q.name();
+        let id = req.message.id();
 
         let client = self.choose_resolver(name);
         println!("using {} for {}", client, name);
         let f = client.resolve(req.message.clone(), use_tcp);
-        f
+        let f = f.and_then(move|mut r: Message| {
+            r.set_id(id);
+            future::ok(r)
+        });
+        Box::new(f)
     }
 
     fn choose_resolver(&self,name: &Name)-> &DnsClient {
