@@ -1,7 +1,7 @@
 use std::io;
 use std::net::{ SocketAddr, IpAddr};
 
-use tokio_core::reactor::Core;
+use tokio_core::reactor::Handle;
 use tokio_core::net::TcpListener;
 use tokio_service::{Service, NewService};
 use tokio_io::AsyncRead;
@@ -9,13 +9,11 @@ use futures::{ Future, Stream, Sink};
 
 use super::super::LineCodec;
 
-pub fn serve<S>(s: S, port: u16) -> io::Result<()>
+pub fn rule_listen<S>(s: S, port: u16, handle: Handle) -> io::Result<Box<Future<Item=(), Error=()>>>
     where S: NewService<Request = String,
                         Response = String,
                         Error = io::Error> + 'static
 {
-    let mut core = Core::new()?;
-    let handle = core.handle();
 
     let socket = SocketAddr::new(IpAddr::from([127,0,0,1]), port);
 
@@ -32,7 +30,7 @@ pub fn serve<S>(s: S, port: u16) -> io::Result<()>
         handle.spawn(server);
 
         Ok(())
-    });
+    }).map_err(|_| ());
 
-    core.run(server)
+    Ok(Box::new(server))
 }

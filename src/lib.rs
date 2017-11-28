@@ -2,7 +2,6 @@ extern crate bytes;
 #[macro_use]
 extern crate error_chain;
 extern crate futures;
-extern crate futures_cpupool;
 #[macro_use]
 extern crate log;
 extern crate tokio_core;
@@ -21,8 +20,6 @@ use bytes::BytesMut;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use futures_cpupool::CpuPool;
-
 use tokio_io::codec::{Encoder, Decoder};
 
 mod resolver;
@@ -35,22 +32,17 @@ pub fn run(port: &str)-> Result<(), ()> {
     let port = u16::from_str(port).unwrap();
 
     let mut core = tokio_core::reactor::Core::new().map_err(|_| ())?;
-    let pool = CpuPool::new(20);
 
     // We provide a way to *instantiate* the service for each new
     // connection; here, we just immediately return a new instance.
     let ruler = ruling::Ruler::new(config_path);
     let r = Arc::new(ruler);
 
-    let r1 = r.clone();
-    let future = pool.spawn_fn(move|| {
-        let _ = ruling::serve::serve(move| | Ok(service::Echo::new(r1.clone())), port);
-        let res: Result<(), ()> = Ok(());
-        res
-    });
     let h = core.handle();
+    let r1 = r.clone();
+    let rlisten =  ruling::serve::rule_listen(move| | Ok(service::Echo::new(r1.clone())), port, h.clone()).unwrap();
     resolver::start_resolver(h, r.clone());
-    core.run(future).map_err(|_| ())?;
+    core.run(rlisten).map_err(|_| ())?;
     Ok(())
 }
 
