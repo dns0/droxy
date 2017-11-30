@@ -1,7 +1,6 @@
 use std::error::Error;
 use std::sync::Arc;
 
-use futures::future;
 use futures::Future;
 
 use tokio_core::reactor::Handle;
@@ -57,7 +56,7 @@ impl SmartResolver {
         let f = client.resolve(req.message.clone(), use_tcp);
         let f = f.and_then(move|mut r: Message| {
             r.set_id(id);
-            future::ok(r)
+            Ok(r)
         });
         Box::new(f)
     }
