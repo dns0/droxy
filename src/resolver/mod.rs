@@ -8,6 +8,7 @@ use tokio_core::reactor::Handle;
 
 mod handler;
 mod dnsclient;
+mod monitor_failure;
 mod server_future;
 mod config;
 

@@ -52,8 +52,7 @@ impl SmartResolver {
         let id = req.message.id();
 
         let client = self.choose_resolver(name);
-        println!("using {} for {}", client, name);
-        let f = client.resolve(req.message.clone(), use_tcp);
+        let f = client.resolve(req.message.clone(),name, use_tcp);
         let f = f.and_then(move|mut r: Message| {
             r.set_id(id);
             Ok(r)
