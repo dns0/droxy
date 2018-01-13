@@ -11,14 +11,14 @@ use toml;
 
 #[derive(Debug)]
 pub struct RegionalResolvers {
-    pub resolv: Vec<(String, SocketAddr)>,
+    pub resolv: BTreeMap<String, SocketAddr>,
     pub default: SocketAddr,
 }
 
 #[derive(Deserialize, Debug)]
 struct ConfValue {
     servers: BTreeMap<String, net::SocketAddr>,
-    rule: Vec<BTreeMap<String, String>>,
+    rule: BTreeMap<String, String>,
 }
 
 impl RegionalResolvers{
@@ -30,23 +30,18 @@ impl RegionalResolvers{
 
         let conf: ConfValue = toml::from_str(&contents)?;
         let servers = conf.servers;
-        let mut default: Option<SocketAddr> = None;
-        let regions = conf.rule;
-        let resolv = regions.iter().filter_map(|rs| {
-            let region = rs.get("region").unwrap();
-            let servername = rs.get("server").unwrap();
-            let server = servers.get(servername).unwrap();
-            if region == "else" {
-                default = Some(server.clone());
-                None
-            } else {
-                Some((region.clone(), server.clone()))
-            }
-        }).collect();
-        let default = default.ok_or("no default dns server defined")?;
+        let default = conf.rule.get("else").and_then(|s| {
+            servers.get(s)
+        }).ok_or(io::Error::new(io::ErrorKind::NotFound, "no default dns server defined"))?;
+        let mut resolv =  BTreeMap::new();
+        for (region, server) in &conf.rule {
+            let server_addr = servers.get(server).ok_or(
+             io::Error::new(io::ErrorKind::NotFound, format!("dns server {} defined", server)))?;
+            resolv.insert(region.clone(), server_addr.clone());
+        }
         Ok(RegionalResolvers{
             resolv: resolv,
-            default: default,
+            default: default.clone(),
         })
     }
 }
