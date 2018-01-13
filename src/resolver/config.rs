@@ -10,19 +10,21 @@ use std::collections::BTreeMap;
 use toml;
 
 #[derive(Debug)]
-pub struct RegionalResolvers {
+pub struct DnsProxyConf {
+    pub listen: SocketAddr,
     pub resolv: BTreeMap<String, SocketAddr>,
     pub default: SocketAddr,
 }
 
 #[derive(Deserialize, Debug)]
 struct ConfValue {
+    listen: SocketAddr,
     servers: BTreeMap<String, net::SocketAddr>,
     rule: BTreeMap<String, String>,
 }
 
-impl RegionalResolvers{
-    pub fn new(conf: path::PathBuf) -> Result<RegionalResolvers, Box<Error>> {
+impl DnsProxyConf {
+    pub fn new(conf: path::PathBuf) -> Result<DnsProxyConf, Box<Error>> {
         let f = fs::File::open(conf).unwrap();
         let mut bufreader = io::BufReader::new(f);
         let mut contents = String::new();
@@ -39,7 +41,8 @@ impl RegionalResolvers{
              io::Error::new(io::ErrorKind::NotFound, format!("dns server {} defined", server)))?;
             resolv.insert(region.clone(), server_addr.clone());
         }
-        Ok(RegionalResolvers{
+        Ok(DnsProxyConf {
+            listen: conf.listen,
             resolv: resolv,
             default: default.clone(),
         })
