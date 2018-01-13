@@ -32,7 +32,10 @@ impl FailureCounter{
                         eprintln!("should wait {} seconds more", t);
                         true
                     }
-                    None => false
+                    None => {
+                        self.update_attempt_time();
+                        false
+                    }
                 }
             } else {
                 true
@@ -44,14 +47,17 @@ impl FailureCounter{
         self.fail_count.store(0, Ordering::Relaxed);
     }
 
+    fn update_attempt_time(&self) {
+        if let Ok(mut ft) = self.last_fail_time.try_borrow_mut() {
+            *ft = time::Instant::now();
+        }
+    }
 
     pub fn log_failure(&self) {
         let fails = self.fail_count.load(Ordering::Relaxed);
         if fails < self.max_count {
             self.fail_count.compare_and_swap(fails, fails + 1, Ordering::Relaxed);
         }
-        if let Ok(mut ft) = self.last_fail_time.try_borrow_mut() {
-            *ft = time::Instant::now();
-        }
+        self.update_attempt_time();
     }
 }
