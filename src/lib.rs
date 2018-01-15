@@ -30,7 +30,7 @@ pub fn run(config_path: &str)-> Result<(), Box<Error>> {
     let d = Arc::new(ruler);
 
     let h = core.handle();
-    let f = resolver::start_resolver(h, d.clone())?;
+    let f = resolver::start_resolver(h,d, config_path )?;
     core.run(f);
     Ok(())
 }

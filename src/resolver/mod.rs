@@ -17,8 +17,8 @@ mod config;
 use super::ruling::DomainMatcher;
 use self::config::DnsProxyConf;
 
-pub fn start_resolver(h: Handle, router: Arc<DomainMatcher>)-> Result<Box<Future<Item=(), Error=()>>, Box<Error>>{
-    let conf = DnsProxyConf::new("config/resolve.config".into())?;
+pub fn start_resolver(h: Handle, router: Arc<DomainMatcher>, config: &str)-> Result<Box<Future<Item=(), Error=()>>, Box<Error>>{
+    let conf = DnsProxyConf::new(config.into())?;
     let handler = handler::SmartResolver::new( h.clone(), router, &conf)?;
     let server = server_future::ServerFuture::new(handler)?;
     let udpsock = net::UdpSocket::bind(&conf.listen)?;
