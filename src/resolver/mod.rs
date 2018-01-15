@@ -5,6 +5,7 @@ use std::net;
 use std::time::Duration;
 use std::sync::Arc;
 
+use futures::Future;
 use tokio_core::reactor::Handle;
 
 mod handler;
@@ -16,13 +17,13 @@ mod config;
 use super::ruling::DomainMatcher;
 use self::config::DnsProxyConf;
 
-pub fn start_resolver(h: Handle, router: Arc<DomainMatcher>)-> Result<(), Box<Error>> {
+pub fn start_resolver(h: Handle, router: Arc<DomainMatcher>)-> Result<Box<Future<Item=(), Error=()>>, Box<Error>>{
     let conf = DnsProxyConf::new("config/resolve.config".into())?;
     let handler = handler::SmartResolver::new( h.clone(), router, &conf)?;
     let server = server_future::ServerFuture::new(handler)?;
     let udpsock = net::UdpSocket::bind(&conf.listen)?;
     server.listen_udp(udpsock,h.clone());
     let tcp = net::TcpListener::bind(&conf.listen)?;
-    server.listen_tcp(tcp, Duration::from_secs(5), h.clone());
-    Ok(())
+    let f = server.listen_tcp(tcp, Duration::from_secs(5), h.clone());
+    Ok(f)
 }
